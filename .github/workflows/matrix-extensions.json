@@ -8,8 +8,6 @@
             "testBin": "wasiCryptoTests",
             "options": "-DWASMEDGE_PLUGIN_WASI_CRYPTO=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -78,8 +76,6 @@
             "testBin": "wasiNNTests",
             "options": "-DWASMEDGE_PLUGIN_WASI_NN_BACKEND=TensorFlowLite",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -94,8 +90,6 @@
             "testBin": "wasiNNTests",
             "options": "-DWASMEDGE_PLUGIN_WASI_NN_BACKEND=Whisper",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -110,7 +104,6 @@
             "testBin": "wasiNNTests",
             "options": "-DWASMEDGE_PLUGIN_WASI_NN_BACKEND=MLX",
             "platforms": [
-                "macos_arm64"
             ]
         },
         {
@@ -134,8 +127,6 @@
             "testBin": "wasmedgeFFmpegTests",
             "options": "-DWASMEDGE_PLUGIN_FFMPEG=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -150,8 +141,6 @@
             "testBin": "wasmedgeImageTests",
             "options": "-DWASMEDGE_PLUGIN_IMAGE=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -166,8 +155,6 @@
             "testBin": "wasmedgeLLMCTests",
             "options": "-DWASMEDGE_PLUGIN_LLMC=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -182,8 +169,6 @@
             "testBin": "wasmedgeOpencvminiTests",
             "options": "-DWASMEDGE_PLUGIN_OPENCVMINI=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -212,8 +197,6 @@
             "testBin": "wasmedgeStableDiffusionTests",
             "options": "-DWASMEDGE_PLUGIN_STABLEDIFFUSION=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -247,7 +230,6 @@
             "target": "wasmedgePluginWasmEdgeStableDiffusion",
             "options": "-DWASMEDGE_PLUGIN_STABLEDIFFUSION=ON -DWASMEDGE_PLUGIN_STABLEDIFFUSION_METAL=ON",
             "platforms": [
-                "macos_arm64"
             ]
         },
         {
@@ -258,8 +240,6 @@
             "testBin": "wasmedgeTensorflowTests",
             "options": "-DWASMEDGE_PLUGIN_TENSORFLOW=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",
@@ -274,8 +254,6 @@
             "testBin": "wasmedgeTensorflowLiteTests",
             "options": "-DWASMEDGE_PLUGIN_TENSORFLOWLITE=ON",
             "platforms": [
-                "macos_x86_64",
-                "macos_arm64",
                 "manylinux_2_28_x86_64",
                 "manylinux_2_28_aarch64",
                 "ubuntu2004_x86_64",

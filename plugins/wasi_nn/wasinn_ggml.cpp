@@ -489,6 +489,47 @@ ErrNo batchDecode(llama_context *LlamaContext, llama_batch &Batch,
   return ErrNo::Success;
 }
 
+ErrNo batchDecodeForReranking(llama_context *LlamaContext, llama_batch &Batch,
+                  float *Output, int NEmbd) noexcept {
+  // Clear previous kv_cache values (irrelevant for embeddings)
+  llama_kv_cache_clear(LlamaContext);
+
+  // Decode the batch.
+  auto Status = llama_decode(LlamaContext, Batch);
+  if (Status == 1) {
+    spdlog::error(
+        "[WASI-NN] GGML backend: failed to llama_decode: try reducing the size of the batch or increasing the size of context"sv);
+    return ErrNo::RuntimeError;
+  } else if (Status < 0) {
+    spdlog::error(
+        "[WASI-NN] GGML backend: failed to llama_decode: internal fatal error. Please open an issue on GitHub"sv);
+    return ErrNo::RuntimeError;
+  }
+
+  for (int I = 0; I < Batch.n_tokens; I++) {
+    if (!Batch.logits[I]) {
+      continue;
+    }
+
+    // Try to get sequence embeddings.
+    auto *Embd = llama_get_embeddings_seq(LlamaContext, Batch.seq_id[I][0]);
+    if (Embd == nullptr) {
+      Embd = llama_get_embeddings_ith(LlamaContext, I);
+      if (Embd == nullptr) {
+        spdlog::error(
+            "[WASI-NN] GGML backend: failed to get embeddings for token {}"sv,
+            I);
+        continue;
+      }
+    }
+
+    Output[I] = Embd[0];
+  }
+
+  return ErrNo::Success;
+}
+
+
 Expect<ErrNo> getEmbedding(WasiNNEnvironment &Env,
                            uint32_t ContextId) noexcept {
   auto &CxtRef = Env.NNContext[ContextId].get<Context>();
@@ -639,10 +680,10 @@ Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
       /* n_tokens_alloc */ static_cast<int32_t>(GraphRef.BatchSize),
       /* embd */ 0,
       /* n_seq_max */ 1);
-  std::vector<float> Embeddings(NEmbd);
+  std::vector<float> Embeddings(1);
   batchAddSeq(Batch, CxtRef.LlamaInputs, SequenceId);
   ReturnCode =
-      batchDecode(GraphRef.LlamaContext, Batch, Embeddings.data(), NEmbd);
+      batchDecodeForReranking(GraphRef.LlamaContext, Batch, Embeddings.data(), NEmbd);
   if (ReturnCode != ErrNo::Success) {
     spdlog::error("[WASI-NN] GGML backend: failed to evaluate input tokens."sv);
     return ReturnCode;
