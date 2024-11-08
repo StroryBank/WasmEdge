@@ -688,7 +688,7 @@ Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
     spdlog::error("[WASI-NN] GGML backend: failed to evaluate input tokens."sv);
     return ReturnCode;
   }
-  buildOutputReranking(CxtRef.LlamaOutputs, NEmbd, Embeddings.data());
+  buildOutputReranking(CxtRef.LlamaOutputs, 1, Embeddings.data());
 
   if (GraphRef.EnableDebugLog) {
     spdlog::info(
