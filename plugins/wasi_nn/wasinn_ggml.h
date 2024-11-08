@@ -30,6 +30,7 @@ struct Graph {
   bool EnableDebugLog = false;
   bool StreamStdout = false;
   bool Embedding = false;
+  bool Reranking = false;
   bool ComputeSingleStarted = false;
   uint64_t NPredict;
   std::string ReversePrompt;

@@ -132,6 +132,14 @@ Expect<ErrNo> parseMetadata(Graph &GraphRef, const std::string &Metadata,
       return ErrNo::InvalidArgument;
     }
   }
+  if (Doc.at_key("reranking").error() == simdjson::SUCCESS) {
+    auto Err = Doc["reranking"].get<bool>().get(GraphRef.Reranking);
+    if (Err) {
+      spdlog::error(
+          "[WASI-NN] GGML backend: Unable to retrieve the reranking option."sv);
+      return ErrNo::InvalidArgument;
+    }
+  }
   if (Doc.at_key("n-predict").error() == simdjson::SUCCESS) {
     auto Err = Doc["n-predict"].get<uint64_t>().get(GraphRef.NPredict);
     if (Err) {
@@ -344,6 +352,7 @@ Expect<ErrNo> setupParams(Graph &GraphRef, common_params &Params) {
   Params.cpuparams.n_threads = static_cast<uint32_t>(GraphRef.Threads);
   Params.cpuparams_batch.n_threads = static_cast<uint32_t>(GraphRef.Threads);
   Params.embedding = GraphRef.Embedding;
+  Params.reranking = GraphRef.Reranking;
   Params.sparams.temp = static_cast<float>(GraphRef.Temp);
   Params.sparams.top_p = static_cast<float>(GraphRef.TopP);
   Params.sparams.penalty_repeat = static_cast<float>(GraphRef.RepeatPenalty);
@@ -380,6 +389,13 @@ void buildOutputEmbedding(std::string &Embedding, int32_t NEmbd,
       fmt::format(R"({{"n_embedding": {}, )"
                   R"("embedding": [{:.10}]}})"sv,
                   NEmbd, fmt::join(Embeddings, Embeddings + NEmbd, ","sv));
+}
+
+void buildOutputReranking(std::string &Reranking, int32_t NRerank,
+                          const float *Rerankings) noexcept {
+  Reranking = fmt::format(R"({{"n_reranking": {}, )"
+                          R"("reranking": [{:.10}]}})"sv,
+                          NRerank, fmt::join(Rerankings, Rerankings + NRerank, ","sv));
 }
 
 ErrNo evaluateTokens(Graph &GraphRef, struct llama_context *LlamaContext,
@@ -559,6 +575,96 @@ Expect<ErrNo> getEmbedding(WasiNNEnvironment &Env,
 
   if (GraphRef.EnableDebugLog) {
     spdlog::info("[WASI-NN][Debug] GGML backend: getEmbedding...Done"sv);
+  }
+
+  return ErrNo::Success;
+}
+
+Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
+                           uint32_t ContextId) noexcept {
+  auto &CxtRef = Env.NNContext[ContextId].get<Context>();
+  auto &GraphRef = Env.NNGraph[CxtRef.GraphId].get<Graph>();
+  if (GraphRef.EnableDebugLog) {
+    spdlog::info("[WASI-NN][Debug] GGML backend: getReranking"sv);
+  }
+
+  if (CxtRef.LlamaInputs.size() == 0) {
+    spdlog::error("[WASI-NN] GGML backend: Llama input is not set!"sv);
+    return ErrNo::InvalidArgument;
+  }
+
+  // Clear the outputs.
+  if (GraphRef.EnableDebugLog) {
+    spdlog::info(
+        "[WASI-NN][Debug] GGML backend: clear the previous output and tokens"sv);
+  }
+  CxtRef.LlamaOutputs.clear();
+  CxtRef.LlamaOutputTokens.clear();
+  if (GraphRef.EnableDebugLog) {
+    spdlog::info(
+        "[WASI-NN][Debug] GGML backend: clear the previous output and tokens...Done"sv);
+  }
+
+  // Main predict loop.
+  if (GraphRef.EnableDebugLog) {
+    spdlog::info("[WASI-NN][Debug] GGML backend: handle reranking"sv);
+  }
+  // Clear the llama context.
+  llama_kv_cache_clear(GraphRef.LlamaContext);
+
+  // Use the const sequence id here.
+  const llama_seq_id SequenceId = 0;
+  // Return value.
+  auto ReturnCode = ErrNo::Success;
+
+  // Add SEP if not present.
+  if (CxtRef.LlamaInputs.back() != llama_token_sep(GraphRef.LlamaModel)) {
+    CxtRef.LlamaInputs.push_back(llama_token_sep(GraphRef.LlamaModel));
+  }
+
+  // Check if the input is too long.
+  if (static_cast<uint64_t>(CxtRef.LlamaInputs.size()) > GraphRef.BatchSize) {
+    if (GraphRef.EnableLog) {
+      spdlog::info(
+          "[WASI-NN] GGML backend: the prompt is too long. "
+          "Your input has {} tokens exceeds batch size {}. "
+          "Please reduce the input size or increase your batch-size."sv,
+          CxtRef.LlamaInputs.size(), GraphRef.BatchSize);
+    }
+    return ErrNo::PromptTooLong;
+  }
+
+  const int32_t NEmbd = llama_n_embd(GraphRef.LlamaModel);
+  struct llama_batch Batch = llama_batch_init(
+      /* n_tokens_alloc */ static_cast<int32_t>(GraphRef.BatchSize),
+      /* embd */ 0,
+      /* n_seq_max */ 1);
+  std::vector<float> Embeddings(NEmbd);
+  batchAddSeq(Batch, CxtRef.LlamaInputs, SequenceId);
+  ReturnCode =
+      batchDecode(GraphRef.LlamaContext, Batch, Embeddings.data(), NEmbd);
+  if (ReturnCode != ErrNo::Success) {
+    spdlog::error("[WASI-NN] GGML backend: failed to evaluate input tokens."sv);
+    return ReturnCode;
+  }
+  buildOutputReranking(CxtRef.LlamaOutputs, NEmbd, Embeddings.data());
+
+  if (GraphRef.EnableDebugLog) {
+    spdlog::info(
+        "[WASI-NN][Debug] GGML backend: enter reranking loop...Done"sv);
+  }
+
+  if (GraphRef.EnableLog) {
+    common_perf_print(GraphRef.LlamaContext, /* Sampler */ nullptr);
+  }
+
+  // We clear the contexts here to keep the ggml plugin stateless.
+  // Users could fully control the contexts by themselves via their prompt.
+  llama_kv_cache_clear(GraphRef.LlamaContext);
+  llama_batch_free(Batch);
+
+  if (GraphRef.EnableDebugLog) {
+    spdlog::info("[WASI-NN][Debug] GGML backend: getReranking...Done"sv);
   }
 
   return ErrNo::Success;
@@ -1059,6 +1165,10 @@ Expect<ErrNo> compute(WasiNNEnvironment &Env, uint32_t ContextId) noexcept {
 
   if (GraphRef.Embedding) {
     return getEmbedding(Env, ContextId);
+  }
+
+  if (GraphRef.Reranking) {
+    return getReranking(Env, ContextId);
   }
 
   if (CxtRef.LlamaInputs.size() == 0) {
