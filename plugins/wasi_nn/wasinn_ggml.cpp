@@ -489,7 +489,7 @@ ErrNo batchDecode(llama_context *LlamaContext, llama_batch &Batch,
 }
 
 ErrNo batchDecodeForReranking(llama_context *LlamaContext, llama_batch &Batch,
-                  float *Output, int NEmbd) noexcept {
+                  float *Output) noexcept {
   // Clear previous kv_cache values (irrelevant for embeddings)
   llama_kv_cache_clear(LlamaContext);
 
@@ -685,7 +685,7 @@ Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
   std::vector<float> Embeddings(NEmbd);
   batchAddSeq(Batch, CxtRef.LlamaInputs, SequenceId);
   ReturnCode =
-      batchDecodeForReranking(GraphRef.LlamaContext, Batch, Embeddings.data(), NEmbd);
+      batchDecodeForReranking(GraphRef.LlamaContext, Batch, Embeddings.data());
   if (ReturnCode != ErrNo::Success) {
     spdlog::error("[WASI-NN] GGML backend: failed to evaluate input tokens."sv);
     return ReturnCode;
