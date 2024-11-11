@@ -523,7 +523,15 @@ ErrNo batchDecodeForReranking(llama_context *LlamaContext, llama_batch &Batch,
       }
     }
 
-    Output[I] = Embd[0];
+    if (GraphRef.EnableDebugLog) {
+      spdlog::info("[WASI-NN][Debug] GGML backend: Output embeddings for token {}: ", I);
+      for (int j = 0; j < NEmbd; j++) {
+        spdlog::info("{} ", Output[j]);
+      }
+      spdlog::info("\n");
+    }
+
+    common_embd_normalize(Embd, Output, NEmbd);
   }
 
   return ErrNo::Success;
@@ -680,7 +688,7 @@ Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
       /* n_tokens_alloc */ static_cast<int32_t>(GraphRef.BatchSize),
       /* embd */ 0,
       /* n_seq_max */ 1);
-  std::vector<float> Embeddings(1);
+  std::vector<float> Embeddings(NEmbd);
   batchAddSeq(Batch, CxtRef.LlamaInputs, SequenceId);
   ReturnCode =
       batchDecodeForReranking(GraphRef.LlamaContext, Batch, Embeddings.data(), NEmbd);
@@ -688,7 +696,7 @@ Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
     spdlog::error("[WASI-NN] GGML backend: failed to evaluate input tokens."sv);
     return ReturnCode;
   }
-  buildOutputReranking(CxtRef.LlamaOutputs, 1, Embeddings.data());
+  buildOutputReranking(CxtRef.LlamaOutputs, NEmbd, Embeddings.data());
 
   if (GraphRef.EnableDebugLog) {
     spdlog::info(
@@ -1422,7 +1430,7 @@ Expect<ErrNo> computeSingle(WasiNNEnvironment &Env,
   if (GraphRef.EnableDebugLog) {
     spdlog::info("[WASI-NN][Debug] GGML backend: computeSingleToken"sv);
   }
-
+  
   // New compute single token context.
   if (!GraphRef.ComputeSingleStarted) {
     GraphRef.ComputeSingleStarted = true;
