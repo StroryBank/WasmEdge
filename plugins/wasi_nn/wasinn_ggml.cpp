@@ -519,11 +519,14 @@ ErrNo batchDecodeForReranking(llama_context *LlamaContext, llama_batch &Batch,
         spdlog::error(
             "[WASI-NN] GGML backend: failed to get embeddings for token {}"sv,
             I);
+        Output[0] = -1e6;
         continue;
       }
     }
 
-    common_embd_normalize(Embd, Output, NEmbd);
+    spdlog::info("[WASI-NN][Debug] GGML backend: Embeddings: {}", fmt::join(std::vector<float>(Embd, Embd + 10), ", "));
+
+    Output[0] = Embd[0];
   }
 
   return ErrNo::Success;
@@ -675,7 +678,7 @@ Expect<ErrNo> getReranking(WasiNNEnvironment &Env,
     return ErrNo::PromptTooLong;
   }
 
-  const int32_t NEmbd = llama_n_embd(GraphRef.LlamaModel);
+  const int32_t NEmbd = 1; // llama_n_embd(GraphRef.LlamaModel);
   struct llama_batch Batch = llama_batch_init(
       /* n_tokens_alloc */ static_cast<int32_t>(GraphRef.BatchSize),
       /* embd */ 0,
