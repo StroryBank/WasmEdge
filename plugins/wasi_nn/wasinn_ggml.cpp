@@ -523,12 +523,6 @@ ErrNo batchDecodeForReranking(llama_context *LlamaContext, llama_batch &Batch,
       }
     }
 
-    spdlog::info("[WASI-NN][Debug] GGML backend: Output embeddings for token {}: ", I);
-    for (int j = 0; j < NEmbd; j++) {
-      spdlog::info("{} ", Output[j]);
-    }
-    spdlog::info("\n");
-
     common_embd_normalize(Embd, Output, NEmbd);
   }
 
