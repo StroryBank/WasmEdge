@@ -393,9 +393,8 @@ void buildOutputEmbedding(std::string &Embedding, int32_t NEmbd,
 
 void buildOutputReranking(std::string &Reranking, int32_t NRerank,
                           const float *Rerankings) noexcept {
-  Reranking = fmt::format(R"({{"n_reranking": {}, )"
-                          R"("reranking": [{:.10}]}})"sv,
-                          NRerank, fmt::join(Rerankings, Rerankings + NRerank, ","sv));
+  Reranking = fmt::format(R"({{"scores": [{:.10}]}})"sv,
+                          fmt::join(Rerankings, Rerankings + NRerank, ","sv));
 }
 
 ErrNo evaluateTokens(Graph &GraphRef, struct llama_context *LlamaContext,
